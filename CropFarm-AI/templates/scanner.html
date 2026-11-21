@@ -1,0 +1,286 @@
+
+<!DOCTYPE html>
+<html lang="{{ current_language }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>cropFarm AI - {{ t.page_title }}</title>
+
+    <link rel="stylesheet"
+    href="{{ url_for('static', filename='css/style.css') }}">
+
+    <style>
+        .result-panel {
+            margin-top: 30px;
+            padding: 25px;
+            background: #f0f8f1;
+            border-radius: 15px;
+            text-align: left;
+        }
+
+        .result-title {
+            text-align: center;
+            color: #1b5e20;
+        }
+
+        .confidence-bar {
+            height: 12px;
+            background: #d5e8d5;
+            border-radius: 20px;
+            overflow: hidden;
+            margin: 12px 0 25px;
+        }
+
+        .confidence-fill {
+            height: 100%;
+            background: #2e7d32;
+            border-radius: 20px;
+        }
+
+        .treatment-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .treatment-card {
+            background: white;
+            padding: 18px;
+            border-radius: 12px;
+            border-left: 5px solid #43a047;
+            box-shadow: 0 3px 12px rgba(0,0,0,0.06);
+        }
+
+        .treatment-card h3 {
+            color: #1b5e20;
+            margin-top: 0;
+            font-size: 17px;
+        }
+
+        .treatment-card p {
+            color: #444;
+            line-height: 1.7;
+        }
+
+        .warning-note {
+            background: #fff8e1;
+            padding: 14px;
+            border-radius: 10px;
+            margin-top: 20px;
+            color: #795548;
+            line-height: 1.6;
+        }
+
+        .language-selector select {
+            padding: 9px 14px;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+            cursor: pointer;
+        }
+
+        @media(max-width: 600px) {
+            .treatment-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="language-selector"
+    style="text-align:right;padding:15px;">
+
+        <form action="{{ url_for('set_language') }}" method="POST">
+
+            <label for="language">{{ t.language }}:</label>
+
+            <select name="language" id="language"
+                    onchange="this.form.submit()">
+
+                <option value="en" {% if current_language == 'en' %}selected{% endif %}>English</option>
+
+                <option value="hi" {% if current_language == 'hi' %}selected{% endif %}>हिन्दी</option>
+
+                <option value="as" {% if current_language == 'as' %}selected{% endif %}>অসমীয়া</option>
+
+                <option value="bn" {% if current_language == 'bn' %}selected{% endif %}>বাংলা</option>
+
+            </select>
+        </form>
+    </div>
+
+    <nav class="navbar">
+        <div class="logo">🌱 CropFarm <span>AI</span></div>
+        <a href="/" class="nav-button">← {{ t.back }}</a>
+    </nav>
+
+    <section class="scanner">
+        <div class="scanner-content">
+
+            <span class="section-tag">{{ t.tag }}</span>
+
+            <h2>{{ t.heading }}</h2>
+
+            <p>{{ t.intro }}</p>
+
+            <div class="feature-card"
+                style="max-width:650px;margin:35px auto;">
+
+                <div class="feature-icon">📸</div>
+
+                <h3>{{ t.upload_title }}</h3>
+
+                <p>{{ t.upload_desc }}</p>
+
+                <br>
+
+                <form method="POST" enctype="multipart/form-data">
+
+                    <input type="file"
+                        name="crop_image"
+                        id="cropImage"
+                        accept=".jpg,.jpeg,.png,.webp"
+                        required>
+
+                    <br><br>
+
+                    <img id="preview"
+                    style="display:none;width:100%;max-height:300px;object-fit:contain;border-radius:12px;">
+
+                    <br><br>
+
+                    <button type="submit" class="primary-btn">
+                        {{ t.analyze }} →
+                    </button>
+
+                </form>
+
+                {% if message %}
+                    <p>{{ message }}</p>
+                {% endif %}
+
+                {% if uploaded_image %}
+
+                    <h3>{{ t.uploaded }}</h3>
+
+                    <img
+                    src="{{ url_for('static', filename='uploads/' + uploaded_image) }}"
+                    style="width:100%;max-height:300px;object-fit:contain;border-radius:12px;">
+
+                {% endif %}
+
+                {% if predicted_disease and disease_details %}
+
+                    <div class="result-panel">
+
+                        <h2 class="result-title">
+                            🌿 {{ t.diagnosis }}
+                        </h2>
+
+                        <h3>{{ t.predicted }}</h3>
+
+                        <h2 style="color:#2e7d32;">
+                            {{ disease_display_name }}
+                        </h2>
+
+                        <h3>{{ t.confidence }}</h3>
+
+                        <h2 style="color:#1b5e20;">
+                            {{ confidence }}%
+                        </h2>
+
+                        <div class="confidence-bar">
+                            <div class="confidence-fill"
+                            style="width:{{ [confidence, 100]|min }}%;">
+                            </div>
+                        </div>
+
+                        <div class="treatment-card">
+                            <h3>🔍 {{ t.description }}</h3>
+                            <p>{{ disease_details.description }}</p>
+                        </div>
+
+                        <div class="treatment-card" style="margin-top:15px;">
+                            <h3>⚠️ {{ t.symptoms }}</h3>
+                            <p>{{ disease_details.symptoms }}</p>
+                        </div>
+
+                        <h2 style="color:#1b5e20;margin-top:30px;">
+                            💊 {{ t.plan }}
+                        </h2>
+
+                        <div class="treatment-grid">
+
+                            <div class="treatment-card">
+                                <h3>🚑 {{ t.treatment }}</h3>
+                                <p>{{ disease_details.treatment }}</p>
+                            </div>
+
+                            <div class="treatment-card">
+                                <h3>🌿 {{ t.organic }}</h3>
+                                <p>{{ disease_details.organic_treatment }}</p>
+                            </div>
+
+                            <div class="treatment-card">
+                                <h3>🧪 {{ t.chemical }}</h3>
+                                <p>{{ disease_details.chemical_treatment }}</p>
+                            </div>
+
+                            <div class="treatment-card">
+                                <h3>🌱 {{ t.recovery }}</h3>
+                                <p>{{ disease_details.recovery }}</p>
+                            </div>
+
+                        </div>
+
+                        <div class="treatment-card" style="margin-top:20px;">
+                            <h3>🛡️ {{ t.prevention }}</h3>
+                            <p>{{ disease_details.prevention }}</p>
+                        </div>
+
+                        <div class="warning-note">
+                            <strong>{{ t.advisory }}:</strong>
+                            {{ t.advisory_text }}
+                        </div>
+                        {% if report_filename %}
+    <div style="text-align:center; margin-top:25px;">
+        <a href="{{ url_for('download_report', filename=report_filename) }}"
+        style="display:inline-block;
+        background:#2e7d32;
+            color:white;
+                padding:14px 25px;
+                border-radius:8px;
+                text-decoration:none;
+                font-weight:bold;">
+            📄 Download PDF Report
+        </a>
+    </div>
+{% endif %}
+
+                    </div>
+
+                {% endif %}
+
+            </div>
+        </div>
+    </section>
+
+    <script>
+        const cropInput = document.getElementById("cropImage");
+
+        cropInput.addEventListener("change", function() {
+            const file = this.files[0];
+
+            if (file) {
+                const preview = document.getElementById("preview");
+                preview.src = URL.createObjectURL(file);
+                preview.style.display = "block";
+            }
+        });
+    </script>
+
+</body>
+</html>
